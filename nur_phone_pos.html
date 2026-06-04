@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ku">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nur Phone POS</title>
+
+<style>
+body{
+font-family:Arial;
+margin:0;
+background:#f3f4f6;
+}
+
+header{
+background:#111827;
+color:#fff;
+padding:12px;
+text-align:center;
+}
+
+.card{
+background:#fff;
+margin:10px;
+padding:12px;
+border-radius:10px;
+box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+input,select,button{
+width:100%;
+padding:10px;
+margin:5px 0;
+border-radius:6px;
+border:1px solid #ccc;
+box-sizing:border-box;
+}
+
+button{
+background:#111827;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+button:hover{
+opacity:0.9;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+border:1px solid #ccc;
+padding:6px;
+text-align:center;
+}
+
+.hidden{
+display:none;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>Nur Phone POS</h2>
+</header>
+
+<!-- LOGIN -->
+<div id="loginBox" class="card">
+<h3>Login</h3>
+
+<input id="u" placeholder="Username">
+
+<input id="p" type="password" placeholder="Password">
+
+<button onclick="loginUser()">Login</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<div class="card adminOnly">
+<h3>Settings (Admin)</h3>
+
+<input id="rate" type="number" value="1450">
+
+<button onclick="saveRate()">Save USD Rate</button>
+</div>
+
+<div class="card adminOnly">
+<h3>Add Product</h3>
+
+<input id="name" placeholder="Mobile Name">
+
+<input id="buy" type="number" placeholder="Buy Price USD">
+
+<input id="sell" type="number" placeholder="Sell Price USD">
+
+<input id="qty" type="number" placeholder="Qty">
+
+<button onclick="addProduct()">Add Product</button>
+</div>
+
+<div class="card">
+<h3>Stock</h3>
+
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Qty</th>
+<th>Sell$</th>
+</tr>
+</thead>
+
+<tbody id="stock"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h3>Sale</h3>
+
+<input id="saleName" placeholder="Product Name">
+
+<input id="saleQty" type="number" placeholder="Qty">
+
+<select id="currency">
+<option>USD</option>
+<option>IQD</option>
+</select>
+
+<button onclick="sale()">Sell</button>
+</div>
+
+<div class="card">
+<h3>Report</h3>
+
+<p id="sales">Sales: 0</p>
+<p id="profit">Profit: 0</p>
+</div>
+
+<div class="card">
+<h3>Receipt</h3>
+
+<div id="receipt"></div>
+</div>
+
+</div>
+
+<script>
+
+let role = "";
+let items = JSON.parse(localStorage.getItem("items") || "[]");
+let sales = Number(localStorage.getItem("sales")) || 0;
+let profit = Number(localStorage.getItem("profit")) || 0;
+
+function loginUser(){
+let username = document.getElementById("u").value;
+let password = document.getElementById("p").value;
+
+if(username === "anas" && password === "878080"){
+role = "admin";
+start();
+}
+else if(username === "staff" && password === "112233"){
+role = "staff";
+start();
+}
+else{
+alert("Wrong login");
+}
+}
+
+function start(){
+document.getElementById("loginBox").classList.add("hidden");
+document.getElementById("app").classList.remove("hidden");
+
+if(role !== "admin"){
+document.querySelectorAll(".adminOnly").forEach(el=>{
+el.style.display="none";
+});
+}
+render();
+}
+
+function save(){
+localStorage.setItem("items", JSON.stringify(items));
+localStorage.setItem("sales", sales);
+localStorage.setItem("profit", profit);
+}
+
+function saveRate(){
+let rate = document.getElementById("rate").value;
+localStorage.setItem("rate", rate);
+alert("Rate Saved");
+}
+
+function addProduct(){
+let item = {
+name: document.getElementById("name").value,
+buy: Number(document.getElementById("buy").value),
+sell: Number(document.getElementById("sell").value),
+qty: Number(document.getElementById("qty").value)
+};
+
+items.push(item);
+save();
+render();
+alert("Product Added");
+}
+
+function sale(){
+let productName = document.getElementById("saleName").value;
+let q = Number(document.getElementById("saleQty").value);
+let currency = document.getElementById("currency").value;
+
+let p = items.find(x => x.name === productName);
+
+if(!p){
+alert("Product not found");
+return;
+}
+
+if(p.qty < q){
+alert("Not enough stock");
+return;
+}
+
+p.qty -= q;
+
+sales += p.sell * q;
+profit += (p.sell - p.buy) * q;
+
+let inv = "INV-" + Date.now();
+let total = p.sell * q;
+let ratev = Number(localStorage.getItem("rate")) || 1450;
+
+let finalText = currency === "IQD"
+? (total * ratev).toLocaleString() + " IQD"
+: total + " USD";
+
+document.getElementById("receipt").innerHTML = `
+<b>${inv}</b><br>
+${p.name} x ${q}<br>
+Total: ${finalText}<br><br>
+<button onclick="window.print()">Print</button>
+`;
+
+save();
+render();
+}
+
+function render(){
+let stock = document.getElementById("stock");
+stock.innerHTML = "";
+
+items.forEach(i=>{
+stock.innerHTML += `
+<tr>
+<td>${i.name}</td>
+<td>${i.qty}</td>
+<td>${i.sell}</td>
+</tr>
+`;
+});
+
+document.getElementById("sales").innerText = "Sales: $" + sales;
+document.getElementById("profit").innerText = "Profit: $" + profit;
+}
+
+render();
+
+</script>
+
+</body>
+</html>
